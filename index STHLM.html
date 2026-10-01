@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Östermalmsgatan 35</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --paper: #F3F2EE;
+    --ink: #1F2A26;
+    --green: #2F4A3F;
+    --brass: #B08D57;
+    --muted: #8A8F88;
+    --rule: #DCDAD2;
+  }
+  html, body { background: var(--paper); color: var(--ink); font-family: Georgia, 'Times New Roman', serif; min-height: 100vh; }
+  .page { max-width: 560px; margin: 0 auto; padding: 44px 24px 80px; }
+
+  .header { border-bottom: 1.5px solid var(--ink); padding-bottom: 18px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  .header h1 { font-size: 30px; font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
+  .header .desc { font-size: 13px; color: var(--muted); margin-top: 8px; font-style: italic; line-height: 1.5; }
+  .header .updated { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.4; white-space: nowrap; }
+
+  .hero { background: var(--green); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin-bottom: 40px; border-left: 4px solid var(--brass); }
+  .hero .label { font-size: 13px; color: rgba(243,242,238,0.65); margin-bottom: 6px; }
+  .hero .who { font-size: 26px; letter-spacing: -0.01em; line-height: 1.2; }
+  .hero .when { font-size: 14px; color: rgba(243,242,238,0.75); margin-top: 6px; }
+  .hero.empty .who { font-style: italic; color: rgba(243,242,238,0.7); font-size: 20px; }
+
+  .month { margin-bottom: 28px; }
+  .month h2 { font-size: 13px; font-weight: 400; color: var(--muted); border-bottom: 1px solid var(--rule); padding-bottom: 6px; margin-bottom: 4px; }
+  .month h2::first-letter { text-transform: uppercase; }
+
+  .booking { display: grid; grid-template-columns: 120px 1fr; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .booking:last-child { border-bottom: none; }
+  .booking .dates { font-size: 14px; color: var(--green); font-variant-numeric: tabular-nums; }
+  .booking .days { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .booking .guest { font-size: 16px; line-height: 1.4; }
+  .booking.now .guest::after { content: "pågår"; margin-left: 10px; font-size: 11px; color: var(--paper); background: var(--brass); padding: 2px 7px; border-radius: 2px; vertical-align: 2px; }
+
+  .none { font-style: italic; color: var(--muted); }
+
+  .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 480px) {
+    .page { padding: 32px 16px 60px; }
+    .header h1 { font-size: 24px; }
+    .hero .who { font-size: 22px; }
+    .booking { grid-template-columns: 100px 1fr; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div>
+      <h1>Östermalmsgatan 35</h1>
+      <div class="desc">Bokningar de kommande 12 månaderna.<br>Datum som inte syns här är lediga.</div>
+    </div>
+    <div class="updated">Uppdaterat<br>1 okt 2026</div>
+  </div>
+
+  <div id="hero"></div>
+  <div id="list"></div>
+
+  <div class="footer">Frågor om bokning: Patrik</div>
+
+</div>
+<script>
+// Lägg till bokningar här: start, slut (samma datum om en dag), gäst
+const BOOKINGS = [
+  { start: "2026-10-15", end: "2026-10-15", guest: "Bettan & Kerstien" },
+  { start: "2026-10-23", end: "2026-10-25", guest: "Jemina & Jonathan" },
+  { start: "2026-10-30", end: "2026-11-01", guest: "Filippa & kompisar" },
+  { start: "2027-01-12", end: "2027-01-14", guest: "Bettan" },
+];
+
+const DAY = 86400000;
+const toDate = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const fmt = d => d.toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+const fmtLong = d => d.toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" });
+
+function range(s, e) {
+  if (+s === +e) return fmt(s);
+  if (s.getMonth() === e.getMonth()) return `${s.getDate()}–${fmt(e)}`;
+  return `${fmt(s)} – ${fmt(e)}`;
+}
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const HORIZON = new Date(TODAY); HORIZON.setFullYear(HORIZON.getFullYear() + 1);
+
+const items = BOOKINGS
+  .map(b => ({ ...b, s: toDate(b.start), e: toDate(b.end) }))
+  .filter(b => b.e >= TODAY && b.s <= HORIZON)
+  .sort((a, b) => a.s - b.s);
+
+// Hero: pågående eller nästa bokning
+const hero = document.getElementById("hero");
+const current = items.find(b => b.s <= TODAY && b.e >= TODAY);
+const next = items.find(b => b.s > TODAY);
+if (current) {
+  hero.className = "hero";
+  hero.innerHTML = `<div class="label">Upptagen just nu</div><div class="who">${current.guest}</div><div class="when">Till och med ${fmtLong(current.e)}</div>`;
+} else if (next) {
+  hero.className = "hero";
+  hero.innerHTML = `<div class="label">Nästa bokning</div><div class="who">${next.guest}</div><div class="when">${range(next.s, next.e)} · om ${Math.round((next.s - TODAY) / DAY)} dagar</div>`;
+} else {
+  hero.className = "hero empty";
+  hero.innerHTML = `<div class="who">Inga bokningar de kommande 12 månaderna</div>`;
+}
+
+// Lista grupperad per månad
+const list = document.getElementById("list");
+const months = {};
+items.forEach(b => {
+  const key = `${b.s.getFullYear()}-${String(b.s.getMonth()+1).padStart(2,"0")}`;
+  (months[key] ||= []).push(b);
+});
+
+Object.keys(months).sort().forEach(key => {
+  const [y, m] = key.split("-").map(Number);
+  const sec = document.createElement("div");
+  sec.className = "month";
+  sec.innerHTML = `<h2>${new Date(y, m-1, 1).toLocaleDateString("sv-SE", { month: "long", year: "numeric" })}</h2>`;
+  months[key].forEach(b => {
+    const n = Math.round((b.e - b.s) / DAY) + 1;
+    const now = b.s <= TODAY && b.e >= TODAY;
+    const row = document.createElement("div");
+    row.className = "booking" + (now ? " now" : "");
+    row.innerHTML = `<div><div class="dates">${range(b.s, b.e)}</div><div class="days">${n} dag${n !== 1 ? "ar" : ""}</div></div><div class="guest">${b.guest}</div>`;
+    sec.appendChild(row);
+  });
+  list.appendChild(sec);
+});
+</script>
+</body>
+</html>
